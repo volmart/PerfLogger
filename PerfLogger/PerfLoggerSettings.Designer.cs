@@ -82,5 +82,17 @@ namespace PerfLogger {
                 this["EnableChildServicesUsage"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public uint RecreateChildCountersIntervals {
+            get {
+                return ((uint)(this["RecreateChildCountersIntervals"]));
+            }
+            set {
+                this["RecreateChildCountersIntervals"] = value;
+            }
+        }
     }
 }

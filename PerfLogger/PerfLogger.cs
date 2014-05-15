@@ -33,6 +33,13 @@ namespace PerfLogger
 
         private void Init()
         {
+            InitSystemCounters();
+            InitProcessCounters();
+            InitChildCounters();
+        }
+
+        private void InitSystemCounters()
+        {
             if (PerfLoggerSettings.Default.EnableSystemUsage)
             {
                 m_cpuCounter = new PerformanceCounter
@@ -44,19 +51,29 @@ namespace PerfLogger
 
                 m_ramCounter = new PerformanceCounter("Memory", "Available MBytes");
             }
+        }
 
+        private void InitProcessCounters()
+        {
             m_monitoringProcess = Process.GetProcessById(m_pid);
             if (m_monitoringProcess != null)
             {
                 m_cpuProcCounter = GetCpuCounters(new[] { m_monitoringProcess }).FirstOrDefault();
+            }
+        }
+        
+        private void InitChildCounters()
+        {
+            if (PerfLoggerSettings.Default.EnableChildServicesUsage && m_monitoringProcess != null)
+            {
+                Stopwatch sw = new Stopwatch();
+                sw.Start();
 
-                if (PerfLoggerSettings.Default.EnableChildServicesUsage)
-                {
-                    m_childProcesses = GetChildProcesses(m_monitoringProcess);
-                    m_childCpuCounters = GetCpuCounters(m_childProcesses);
+                m_childProcesses = GetChildProcesses(m_monitoringProcess);
+                m_childCpuCounters = GetCpuCounters(m_childProcesses);
 
-                    m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
-                }
+                Log("Recreated child counters in " + sw.ElapsedMilliseconds + "ms, " + m_childProcesses.Count);
+                m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
             }
         }
 
@@ -68,7 +85,9 @@ namespace PerfLogger
                 return;
             }
 
+            uint iteration = 0;
             uint interval = PerfLoggerSettings.Default.Interval;
+            uint recreateCountersIntervals = PerfLoggerSettings.Default.RecreateChildCountersIntervals;
             while (m_monitoringProcess != null && !m_monitoringProcess.HasExited)
             {
                 try
@@ -84,7 +103,15 @@ namespace PerfLogger
                     Init();
                 }
 
-                System.Threading.Thread.Sleep((int)interval);
+                // Requery child processes from time to time
+                if (recreateCountersIntervals > 0 && ++iteration % recreateCountersIntervals == 0)
+                {
+                    InitChildCounters();
+                }
+                else
+                {
+                    System.Threading.Thread.Sleep((int)interval);
+                }
             }
 
             Log("Process exited: " + m_monitoringProcess.HasExited);
