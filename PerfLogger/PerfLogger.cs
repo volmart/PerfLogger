@@ -33,23 +33,30 @@ namespace PerfLogger
 
         private void Init()
         {
-            m_cpuCounter = new PerformanceCounter();
+            if (PerfLoggerSettings.Default.EnableSystemUsage)
+            {
+                m_cpuCounter = new PerformanceCounter
+                {
+                    CategoryName = "Processor",
+                    CounterName = "% Processor Time",
+                    InstanceName = "_Total"
+                };
 
-            m_cpuCounter.CategoryName = "Processor";
-            m_cpuCounter.CounterName = "% Processor Time";
-            m_cpuCounter.InstanceName = "_Total";
-
-            m_ramCounter = new PerformanceCounter("Memory", "Available MBytes");
+                m_ramCounter = new PerformanceCounter("Memory", "Available MBytes");
+            }
 
             m_monitoringProcess = Process.GetProcessById(m_pid);
             if (m_monitoringProcess != null)
             {
-                m_cpuProcCounter = GetCpuCounter(m_monitoringProcess);
+                m_cpuProcCounter = GetCpuCounters(new[] { m_monitoringProcess }).FirstOrDefault();
 
-                m_childProcesses = GetChildProcesses(m_monitoringProcess);
-                m_childCpuCounters = GetCpuCounters(m_childProcesses);
+                if (PerfLoggerSettings.Default.EnableChildServicesUsage)
+                {
+                    m_childProcesses = GetChildProcesses(m_monitoringProcess);
+                    m_childCpuCounters = GetCpuCounters(m_childProcesses);
 
-                m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
+                    m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
+                }
             }
         }
 
@@ -107,21 +114,26 @@ namespace PerfLogger
 
         private List<PerformanceCounter> GetCpuCounters(IEnumerable<Process> processes)
         {
-            return processes.Select(GetCpuCounter).ToList();
+            var counters = GetProcessInstanceNames(processes).Select(name => 
+                new PerformanceCounter()
+                {
+                    CategoryName = "Process",
+                    CounterName = "% Processor Time",
+                    InstanceName = name,
+                });
+
+            return counters.ToList();
         }
 
-        private PerformanceCounter GetCpuCounter(Process proc)
+        /// <summary>
+        /// Counter names are not same as Process name when there are several of them, like Nss
+        /// It will be Nss#1, Nss#2 etc
+        /// </summary>
+        private IEnumerable<string> GetProcessInstanceNames(IEnumerable<Process> processes)
         {
-            return new PerformanceCounter()
-            {
-                CategoryName = "Process",
-                CounterName = "% Processor Time",
-                InstanceName = GetProcessInstanceName(proc.Id),
-            };
-        }
+            var names = new List<string>();
+            var pids = processes.Select(p => p.Id).ToList();
 
-        private string GetProcessInstanceName(int pid)
-        {
             var cat = new PerformanceCounterCategory("Process");
 
             string[] instances = cat.GetInstanceNames();
@@ -132,9 +144,13 @@ namespace PerfLogger
                     using (var cnt = new PerformanceCounter("Process", "ID Process", instance, true))
                     {
                         int val = (int)cnt.RawValue;
-                        if (val == pid)
+                        if (pids.Contains(val))
                         {
-                            return instance;
+                            names.Add(instance);
+                            if (names.Count == pids.Count)
+                            {
+                                break;
+                            }
                         }
                     }
                 }
@@ -144,7 +160,7 @@ namespace PerfLogger
                 }
             }
 
-            throw new Exception("Could not find performance counter instance name for current process. This is truly strange ...");
+            return names;
         }
 
         private List<Process> GetChildProcesses(Process process)
