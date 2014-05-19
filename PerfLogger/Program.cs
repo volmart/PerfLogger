@@ -28,6 +28,12 @@ namespace PerfLogger
 
             ConfigureLog4Net("_" + pid);
 
+            if (PerfLoggerSettings.Default.Enabled == false)
+            {
+                s_log.Debug("PerfLogger is disabled (config file option <Enabled> is false).");
+                return;
+            }
+
             if (pid != 0)
             {
                 PerfLogger logger = new PerfLogger(pid);
