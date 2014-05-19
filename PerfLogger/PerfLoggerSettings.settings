@@ -18,7 +18,13 @@
       <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="RecreateChildCountersIntervals" Type="System.UInt32" Scope="User">
-      <Value Profile="(Default)">100</Value>
+      <Value Profile="(Default)">500</Value>
+    </Setting>
+    <Setting Name="MonitoringDelay" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">20000</Value>
+    </Setting>
+    <Setting Name="DelayOnException" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">5000</Value>
     </Setting>
   </Settings>
 </SettingsFile>

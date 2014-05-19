@@ -85,13 +85,37 @@ namespace PerfLogger {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        [global::System.Configuration.DefaultSettingValueAttribute("500")]
         public uint RecreateChildCountersIntervals {
             get {
                 return ((uint)(this["RecreateChildCountersIntervals"]));
             }
             set {
                 this["RecreateChildCountersIntervals"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("20000")]
+        public int MonitoringDelay {
+            get {
+                return ((int)(this["MonitoringDelay"]));
+            }
+            set {
+                this["MonitoringDelay"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5000")]
+        public int DelayOnException {
+            get {
+                return ((int)(this["DelayOnException"]));
+            }
+            set {
+                this["DelayOnException"] = value;
             }
         }
     }

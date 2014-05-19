@@ -35,19 +35,14 @@ namespace PerfLogger
             else
             {
                 s_log.Debug("Non existing process id");
+                System.Console.WriteLine("Usage: PerfLogger ProcessID");
             }
         }
 
         private static void ConfigureLog4Net(string fileSuffix)
         {
             log4net.GlobalContext.Properties["LogName"] = fileSuffix;
-            string logConfigFile = "log4net.config";
-            if (System.IO.File.Exists(logConfigFile))
-            {
-                log4net.Config.XmlConfigurator.ConfigureAndWatch(new System.IO.FileInfo(logConfigFile));
-            }
-            
-            s_log.Debug("test");
+            log4net.Config.XmlConfigurator.Configure();
         }
     }
 }

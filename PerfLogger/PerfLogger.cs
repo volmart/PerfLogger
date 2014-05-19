@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 namespace PerfLogger
 {
@@ -26,9 +27,18 @@ namespace PerfLogger
         /// </summary>
         public PerfLogger(int pid)
         {
+            Log("Monitoring process id " + pid);
             m_pid = pid;
+
+            Wait(PerfLoggerSettings.Default.MonitoringDelay);
             Init();
             Start();
+        }
+
+        private void Wait(int delay)
+        {
+            Log("Start monitoring after " + delay + "msec");
+            Thread.Sleep(delay);
         }
 
         private void Init()
@@ -97,6 +107,8 @@ namespace PerfLogger
                 catch (Exception ex)
                 {
                     Log(ex.ToString());
+
+                    Wait(PerfLoggerSettings.Default.DelayOnException);
 
                     // Exception means smth wrong with obtaining data from counters
                     // Some process died or smth like that, recreating counters in this case
