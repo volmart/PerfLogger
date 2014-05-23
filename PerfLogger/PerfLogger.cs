@@ -14,11 +14,13 @@ namespace PerfLogger
 
         private readonly int m_pid;
         private PerformanceCounter m_cpuCounter;
-        private PerformanceCounter m_ramCounter;
+        private PerformanceCounter m_memCounter;
         private PerformanceCounter m_cpuProcCounter;
+        private PerformanceCounter m_memProcCounter;
         private Process m_monitoringProcess;
         private List<Process> m_childProcesses = new List<Process>();
         private List<PerformanceCounter> m_childCpuCounters = new List<PerformanceCounter>();
+        private List<PerformanceCounter> m_childMemCounters = new List<PerformanceCounter>();
 
         #endregion
 
@@ -59,7 +61,7 @@ namespace PerfLogger
                     InstanceName = "_Total"
                 };
 
-                m_ramCounter = new PerformanceCounter("Memory", "Available MBytes");
+                m_memCounter = new PerformanceCounter("Memory", "Available MBytes");
             }
         }
 
@@ -69,6 +71,7 @@ namespace PerfLogger
             if (m_monitoringProcess != null)
             {
                 m_cpuProcCounter = GetCpuCounters(new[] { m_monitoringProcess }).FirstOrDefault();
+                m_memProcCounter = GetMemCounters(new[] { m_monitoringProcess }).FirstOrDefault();
             }
         }
         
@@ -81,6 +84,7 @@ namespace PerfLogger
 
                 m_childProcesses = GetChildProcesses(m_monitoringProcess);
                 m_childCpuCounters = GetCpuCounters(m_childProcesses);
+                m_childMemCounters = GetMemCounters(m_childProcesses);
 
                 Log("Recreated child counters in " + sw.ElapsedMilliseconds + "ms, " + m_childProcesses.Count);
                 m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
@@ -139,29 +143,39 @@ namespace PerfLogger
                 logSample.FreeMemory = GetAvailableRam();
             }
 
-            logSample.ProcessMemoryUsage = (int) m_monitoringProcess.PrivateMemorySize64 / (1024 * 1024);
+            logSample.ProcessMemoryUsage = (int) m_memProcCounter.NextValue() / (1024 * 1024);
             logSample.ProcessCpuUsage = m_cpuProcCounter.NextValue() / Environment.ProcessorCount;
 
             if (PerfLoggerSettings.Default.EnableChildServicesUsage)
             {
-                logSample.ChildMemoryUsage = GetChildsRam();
+                logSample.ChildMemoryUsage = GetChildsMemeUsage();
                 logSample.ChildCpuUsage = GetChildsCpuUsage();
             }
 
             logSample.Log();
         }
 
-        private List<PerformanceCounter> GetCpuCounters(IEnumerable<Process> processes)
+        private List<PerformanceCounter> GetProcessCounters(IEnumerable<Process> processes, string counter)
         {
             var counters = GetProcessInstanceNames(processes).Select(name => 
                 new PerformanceCounter()
                 {
                     CategoryName = "Process",
-                    CounterName = "% Processor Time",
+                    CounterName = counter,
                     InstanceName = name,
                 });
 
             return counters.ToList();
+        }
+
+        private List<PerformanceCounter> GetCpuCounters(IEnumerable<Process> processes)
+        {
+            return GetProcessCounters(processes, "% Processor Time");
+        }
+
+        private List<PerformanceCounter> GetMemCounters(IEnumerable<Process> processes)
+        {
+            return GetProcessCounters(processes, "Working set");
         }
 
         /// <summary>
@@ -237,9 +251,9 @@ namespace PerfLogger
             return results;
         }
 
-        private int GetChildsRam()
+        private int GetChildsMemeUsage()
         {
-            long totalMemory = m_childProcesses.Sum(p => p.PrivateMemorySize64);
+            float totalMemory = m_childMemCounters.Sum(c => c.NextValue());
 
             return (int)totalMemory / (1024 * 1024);
         }
@@ -256,7 +270,7 @@ namespace PerfLogger
 
         private float GetAvailableRam()
         {
-            return m_ramCounter.NextValue(); 
+            return m_memCounter.NextValue(); 
         }
 
         private void Log(string message)
