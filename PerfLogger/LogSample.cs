@@ -82,20 +82,20 @@ namespace PerfLogger
 
             if (PerfLoggerSettings.Default.EnableSystemUsage)
             {
-                columns.Add(CpuUsage.ToString("0"));
-                columns.Add(FreeMemory.ToString("0"));
+                columns.Add(string.Format("{0,4}", (int)CpuUsage));
+                columns.Add(string.Format("{0,6}", (int)FreeMemory));
             }
 
-            columns.Add(ProcessCpuUsage.ToString("0"));
-            columns.Add(ProcessMemoryUsage.ToString("0"));
+            columns.Add(string.Format("{0,4}", (int)ProcessCpuUsage));
+            columns.Add(string.Format("{0,6}", (int)ProcessMemoryUsage));
 
             if (PerfLoggerSettings.Default.EnableChildServicesUsage)
             {
-                columns.Add(ChildCpuUsage.ToString("0"));
-                columns.Add(ChildMemoryUsage.ToString("0"));
+                columns.Add(string.Format("{0,4}", (int)ChildCpuUsage));
+                columns.Add(string.Format("{0,6}", ChildMemoryUsage));
             }
 
-            string result = string.Join(",\t", columns);
+            string result = string.Join(",", columns);
             Console.WriteLine(result);
 
             return result;
