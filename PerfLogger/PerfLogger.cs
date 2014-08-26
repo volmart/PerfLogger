@@ -21,6 +21,7 @@ namespace PerfLogger
         private List<Process> m_childProcesses = new List<Process>();
         private List<PerformanceCounter> m_childCpuCounters = new List<PerformanceCounter>();
         private List<PerformanceCounter> m_childMemCounters = new List<PerformanceCounter>();
+        private List<PerformanceCounter> m_resourceManagerCounters = new List<PerformanceCounter>();
 
         #endregion
 
@@ -48,6 +49,7 @@ namespace PerfLogger
             InitSystemCounters();
             InitProcessCounters();
             InitChildCounters();
+            InitResourceManagerCounters();
         }
 
         private void InitSystemCounters()
@@ -88,6 +90,25 @@ namespace PerfLogger
 
                 Log("Recreated child counters in " + sw.ElapsedMilliseconds + "ms, " + m_childProcesses.Count);
                 m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
+            }
+        }
+
+        private void InitResourceManagerCounters()
+        {
+            if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+            {
+                string categoryName = "ResourceManager";
+                m_resourceManagerCounters.Add(new PerformanceCounter
+                {
+                    CategoryName = categoryName,
+                    CounterName = "messages / sec"
+                });
+
+                m_resourceManagerCounters.Add(new PerformanceCounter
+                {
+                    CategoryName = categoryName,
+                    CounterName = "queued messages"
+                });
             }
         }
 
@@ -150,6 +171,12 @@ namespace PerfLogger
             {
                 logSample.ChildMemoryUsage = GetChildsMemeUsage();
                 logSample.ChildCpuUsage = GetChildsCpuUsage();
+            }
+
+            if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+            {
+                logSample.MessagesPerSecond = GetMessagesPerSecond();
+                logSample.MessagesQueued = GetMessagesQueued();
             }
 
             logSample.Log();
@@ -271,6 +298,16 @@ namespace PerfLogger
         private float GetAvailableRam()
         {
             return m_memCounter.NextValue(); 
+        }
+
+        private int GetMessagesPerSecond()
+        {
+            return (int)m_resourceManagerCounters[0].NextValue();
+        }
+
+        private int GetMessagesQueued()
+        {
+            return (int)m_resourceManagerCounters[1].NextValue();
         }
 
         private void Log(string message)

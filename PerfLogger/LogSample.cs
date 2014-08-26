@@ -34,6 +34,12 @@ namespace PerfLogger
                     columns.Add("ChildMemMB");
                 }
 
+                if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+                {
+                    columns.Add("Msgs/Sec");
+                    columns.Add("MsgsQueued");
+                }
+
                 return string.Join(",\t", columns);
             }
         }
@@ -49,6 +55,10 @@ namespace PerfLogger
         public float ChildCpuUsage { get; set; }
 
         public int ChildMemoryUsage { get; set; }
+
+        public int MessagesPerSecond { get; set; }
+
+        public int MessagesQueued { get; set; }
 
         public bool IsOverThreshold
         {
@@ -93,6 +103,12 @@ namespace PerfLogger
             {
                 columns.Add(string.Format("{0,4}", (int)ChildCpuUsage));
                 columns.Add(string.Format("{0,6}", ChildMemoryUsage));
+            }
+
+            if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+            {
+                columns.Add(string.Format("{0,5}", MessagesPerSecond));
+                columns.Add(string.Format("{0,2}", MessagesQueued));
             }
 
             string result = string.Join(",", columns);
