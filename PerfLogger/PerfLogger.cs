@@ -46,6 +46,8 @@ namespace PerfLogger
 
         private void Init()
         {
+            PerformanceCounter.CloseSharedResources();
+
             InitSystemCounters();
             InitProcessCounters();
             InitChildCounters();
@@ -54,62 +56,77 @@ namespace PerfLogger
 
         private void InitSystemCounters()
         {
-            if (PerfLoggerSettings.Default.EnableSystemUsage)
+            try
             {
-                m_cpuCounter = new PerformanceCounter
+                if (PerfLoggerSettings.Default.EnableSystemUsage)
                 {
-                    CategoryName = "Processor",
-                    CounterName = "% Processor Time",
-                    InstanceName = "_Total"
-                };
+                    m_cpuCounter = GetCounter("Processor", "% Processor Time", "_Total");
+                }
 
-                m_memCounter = new PerformanceCounter("Memory", "Available MBytes");
+                m_memCounter = GetCounter("Memory", "Available MBytes");
+            }
+            catch (Exception ex)
+            {
+                Log(ex.ToString());
             }
         }
 
         private void InitProcessCounters()
         {
-            m_monitoringProcess = Process.GetProcessById(m_pid);
-            if (m_monitoringProcess != null)
+            try
             {
-                m_cpuProcCounter = GetCpuCounters(new[] { m_monitoringProcess }).FirstOrDefault();
-                m_memProcCounter = GetMemCounters(new[] { m_monitoringProcess }).FirstOrDefault();
+                m_monitoringProcess = Process.GetProcessById(m_pid);
+                if (m_monitoringProcess != null)
+                {
+                    m_cpuProcCounter = GetCpuCounters(new[] { m_monitoringProcess }).FirstOrDefault();
+                    m_memProcCounter = GetMemCounters(new[] { m_monitoringProcess }).FirstOrDefault();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log(ex.ToString());
             }
         }
         
         private void InitChildCounters()
         {
-            if (PerfLoggerSettings.Default.EnableChildServicesUsage && m_monitoringProcess != null)
+            try
             {
-                Stopwatch sw = new Stopwatch();
-                sw.Start();
+                if (PerfLoggerSettings.Default.EnableChildServicesUsage && m_monitoringProcess != null)
+                {
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
 
-                m_childProcesses = GetChildProcesses(m_monitoringProcess);
-                m_childCpuCounters = GetCpuCounters(m_childProcesses);
-                m_childMemCounters = GetMemCounters(m_childProcesses);
+                    m_childProcesses = GetChildProcesses(m_monitoringProcess);
+                    m_childCpuCounters = GetCpuCounters(m_childProcesses);
+                    m_childMemCounters = GetMemCounters(m_childProcesses);
 
-                Log("Recreated child counters in " + sw.ElapsedMilliseconds + "ms, " + m_childProcesses.Count);
-                m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
+                    Log("Recreated child counters in " + sw.ElapsedMilliseconds + "ms, " + m_childProcesses.Count);
+                    m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
+                }
             }
+            catch (Exception ex)
+            {
+                Log(ex.ToString());
+            }             
         }
 
         private void InitResourceManagerCounters()
         {
-            if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+            try
             {
-                string categoryName = "ResourceManager";
-                m_resourceManagerCounters.Add(new PerformanceCounter
+                if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
                 {
-                    CategoryName = categoryName,
-                    CounterName = "messages / sec"
-                });
+                    string categoryName = "ResourceManager";
 
-                m_resourceManagerCounters.Add(new PerformanceCounter
-                {
-                    CategoryName = categoryName,
-                    CounterName = "queued messages"
-                });
+                    m_resourceManagerCounters.Add(GetCounter(categoryName, "messages / sec"));                    
+                    m_resourceManagerCounters.Add(GetCounter(categoryName, "queued messages"));
+                }
             }
+            catch (Exception ex)
+            {
+                Log(ex.ToString());
+            } 
         }
 
         private void Start()
@@ -147,7 +164,7 @@ namespace PerfLogger
                 }
                 else
                 {
-                    System.Threading.Thread.Sleep((int)interval);
+                    Thread.Sleep((int)interval);
                 }
             }
 
@@ -156,7 +173,7 @@ namespace PerfLogger
 
         private void ProduceLogSample()
         {
-            LogSample logSample = new LogSample();
+            var logSample = new LogSample();
 
             if (PerfLoggerSettings.Default.EnableSystemUsage)
             {
@@ -164,12 +181,12 @@ namespace PerfLogger
                 logSample.FreeMemory = GetAvailableRam();
             }
 
-            logSample.ProcessMemoryUsage = (int) m_memProcCounter.NextValue() / (1024 * 1024);
-            logSample.ProcessCpuUsage = m_cpuProcCounter.NextValue() / Environment.ProcessorCount;
+            logSample.ProcessMemoryUsage = GetProcessMemoryUsage();
+            logSample.ProcessCpuUsage = GetProcessCpuUsage();
 
             if (PerfLoggerSettings.Default.EnableChildServicesUsage)
             {
-                logSample.ChildMemoryUsage = GetChildsMemeUsage();
+                logSample.ChildMemoryUsage = GetChildsMemUsage();
                 logSample.ChildCpuUsage = GetChildsCpuUsage();
             }
 
@@ -184,15 +201,17 @@ namespace PerfLogger
 
         private List<PerformanceCounter> GetProcessCounters(IEnumerable<Process> processes, string counter)
         {
-            var counters = GetProcessInstanceNames(processes).Select(name => 
-                new PerformanceCounter()
-                {
-                    CategoryName = "Process",
-                    CounterName = counter,
-                    InstanceName = name,
-                });
+            var counters = new List<PerformanceCounter>();
+            try
+            {
+                counters = GetProcessInstanceNames(processes).Select(name => GetCounter("Process", counter, name)).Where(c => c != null).ToList();
+            }
+            catch (Exception ex)
+            {
+                Log(ex.ToString());
+            }
 
-            return counters.ToList();
+            return counters;
         }
 
         private List<PerformanceCounter> GetCpuCounters(IEnumerable<Process> processes)
@@ -278,7 +297,45 @@ namespace PerfLogger
             return results;
         }
 
-        private int GetChildsMemeUsage()
+        private PerformanceCounter GetCounter(string category, string counter, string instance = null)
+        {
+            PerformanceCounter result = null;
+            try
+            {
+                result = new PerformanceCounter
+                {
+                    CategoryName = category,
+                    CounterName = counter
+                };
+
+                if (!string.IsNullOrEmpty(instance))
+                {
+                    result.InstanceName = instance;
+                }
+
+                var test = result.NextValue();
+            }
+            catch (Exception ex)
+            {
+                result = null;
+                Log(ex.ToString());
+                Log("Error creating counter " + category + "-" + counter + "-" + instance ?? string.Empty);
+            }
+
+            return result;
+        }
+
+        private float GetProcessCpuUsage()
+        {
+            return m_cpuProcCounter != null ? m_cpuProcCounter.NextValue() / Environment.ProcessorCount : -1f;
+        }
+
+        private int GetProcessMemoryUsage()
+        {
+            return m_memProcCounter != null ? (int)m_memProcCounter.NextValue() / (1024 * 1024) : -1;
+        }
+
+        private int GetChildsMemUsage()
         {
             float totalMemory = m_childMemCounters.Sum(c => c.NextValue());
 
@@ -291,23 +348,23 @@ namespace PerfLogger
         }
 
         private float GetCurrentCpuUsage()
-        { 
-            return m_cpuCounter.NextValue();
+        {
+            return m_cpuCounter != null ? m_cpuCounter.NextValue() : -1f;
         } 
 
         private float GetAvailableRam()
         {
-            return m_memCounter.NextValue(); 
+            return m_memCounter != null ? m_memCounter.NextValue() : -1f; 
         }
 
         private int GetMessagesPerSecond()
         {
-            return (int)m_resourceManagerCounters[0].NextValue();
+            return m_resourceManagerCounters[0] != null ? (int)m_resourceManagerCounters[0].NextValue() : -1;
         }
 
         private int GetMessagesQueued()
         {
-            return (int)m_resourceManagerCounters[1].NextValue();
+            return m_resourceManagerCounters[1] != null ? (int)m_resourceManagerCounters[1].NextValue() : -1;
         }
 
         private void Log(string message)
