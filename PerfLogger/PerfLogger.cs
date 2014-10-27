@@ -11,7 +11,8 @@ namespace PerfLogger
         #region Private Fields
 
         private readonly log4net.ILog m_log = log4net.LogManager.GetLogger("MainLog");
-
+        readonly List<string> m_skipProcesses = new List<string>();
+ 
         private readonly int m_pid;
         private PerformanceCounter m_cpuCounter;
         private PerformanceCounter m_memCounter;
@@ -46,6 +47,9 @@ namespace PerfLogger
 
         private void Init()
         {
+            m_skipProcesses.Add("conhost");
+            m_skipProcesses.Add("PerfLogger");
+
             PerformanceCounter.CloseSharedResources();
 
             InitSystemCounters();
@@ -87,19 +91,21 @@ namespace PerfLogger
                 Log(ex.ToString());
             }
         }
-        
+
         private void InitChildCounters()
         {
             try
             {
                 if (PerfLoggerSettings.Default.EnableChildServicesUsage && m_monitoringProcess != null)
                 {
-                    Stopwatch sw = new Stopwatch();
+                    var sw = new Stopwatch();
                     sw.Start();
 
                     m_childProcesses = GetChildProcesses(m_monitoringProcess);
                     m_childCpuCounters = GetCpuCounters(m_childProcesses);
                     m_childMemCounters = GetMemCounters(m_childProcesses);
+
+                    LogSample.SetHeader(m_childCpuCounters.Select(c => c.InstanceName).ToList());
 
                     Log("Recreated child counters in " + sw.ElapsedMilliseconds + "ms, " + m_childProcesses.Count);
                     m_childProcesses.ForEach(p => Log("Child process: " + p.Id + "\t" + p.ProcessName));
@@ -186,8 +192,8 @@ namespace PerfLogger
 
             if (PerfLoggerSettings.Default.EnableChildServicesUsage)
             {
-                logSample.ChildMemoryUsage = GetChildsMemUsage();
-                logSample.ChildCpuUsage = GetChildsCpuUsage();
+                logSample.SetChildMemoryUsage(GetChildsMemUsage());
+                logSample.SetChildCpuUsage(GetChildsCpuUsage());
             }
 
             if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
@@ -283,7 +289,11 @@ namespace PerfLogger
                             var childId = Convert.ToInt32(data);
                             var childProcess = Process.GetProcessById(childId);
 
-                            results.Add(childProcess);
+                            if (!m_skipProcesses.Contains(childProcess.ProcessName))
+                            {
+                                results.Add(childProcess);
+                            }
+
                             results.AddRange(GetChildProcesses(childProcess));
                         }
                         catch (Exception ex)
@@ -335,16 +345,18 @@ namespace PerfLogger
             return m_memProcCounter != null ? (int)m_memProcCounter.NextValue() / (1024 * 1024) : -1;
         }
 
-        private int GetChildsMemUsage()
+        private Dictionary<string, int> GetChildsMemUsage()
         {
-            float totalMemory = m_childMemCounters.Sum(c => c.NextValue());
+            Dictionary<string, int> values = m_childMemCounters.ToDictionary(c => c.InstanceName, c => (int)c.NextValue() / (1024 * 1024));
 
-            return (int)totalMemory / (1024 * 1024);
+            return values;
         }
 
-        private float GetChildsCpuUsage()
+        private Dictionary<string, float> GetChildsCpuUsage()
         {
-            return m_childCpuCounters.Sum(c => c.NextValue()) / Environment.ProcessorCount;
+            Dictionary<string, float> values = m_childCpuCounters.ToDictionary(c => c.InstanceName, c => c.NextValue() / (float)Environment.ProcessorCount);
+
+            return values;
         }
 
         private float GetCurrentCpuUsage()
