@@ -77,8 +77,11 @@ namespace PerfLogger
                 int maxCpuUsage = (int)CpuUsage;
                 int maxMemUsage = ProcessMemoryUsage;
 
-                maxCpuUsage = Math.Max(maxCpuUsage, (int)Math.Max(ProcessCpuUsage, m_childCpuUsage.Max(c => c.Value)));
-                maxMemUsage = Math.Max(maxMemUsage, m_childMemoryUsage.Max(c => c.Value));
+                if (PerfLoggerSettings.Default.EnableChildServicesUsage)
+                {
+                    maxCpuUsage = Math.Max(maxCpuUsage, (int)m_childCpuUsage.Max(c => c.Value));
+                    maxMemUsage = Math.Max(maxMemUsage, m_childMemoryUsage.Max(c => c.Value));                    
+                }
 
                 bool result = maxCpuUsage > PerfLoggerSettings.Default.CpuThreshold ||
                               maxMemUsage > PerfLoggerSettings.Default.MemoryThreshold;
