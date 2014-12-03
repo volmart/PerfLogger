@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 
@@ -11,7 +12,7 @@ namespace PerfLogger
         #region Private Fields
 
         private readonly log4net.ILog m_log = log4net.LogManager.GetLogger("MainLog");
-        readonly List<string> m_skipProcesses = new List<string>();
+        private readonly List<string> m_skipProcesses = new List<string>();
  
         private readonly int m_pid;
         private PerformanceCounter m_cpuCounter;
@@ -340,14 +341,20 @@ namespace PerfLogger
             return m_cpuProcCounter != null ? m_cpuProcCounter.NextValue() / Environment.ProcessorCount : -1f;
         }
 
-        private int GetProcessMemoryUsage()
+        private long ByteToMByte(long bytes)
         {
-            return m_memProcCounter != null ? (int)m_memProcCounter.NextValue() / (1024 * 1024) : -1;
+            const long divider = 1024 * 1024;
+            return bytes / divider;
         }
 
-        private Dictionary<string, int> GetChildsMemUsage()
+        private long GetProcessMemoryUsage()
         {
-            Dictionary<string, int> values = m_childMemCounters.ToDictionary(c => c.InstanceName, c => (int)c.NextValue() / (1024 * 1024));
+            return m_memProcCounter != null ? ByteToMByte((long)m_memProcCounter.NextValue()) : -1;
+        }
+
+        private Dictionary<string, long> GetChildsMemUsage()
+        {
+            Dictionary<string, long> values = m_childMemCounters.ToDictionary(c => c.InstanceName, c => ByteToMByte((long)c.NextValue()));
 
             return values;
         }

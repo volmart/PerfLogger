@@ -12,7 +12,7 @@ namespace PerfLogger
         private static readonly List<string> s_childProceList = new List<string>();
 
         private readonly Dictionary<string, float> m_childCpuUsage = new Dictionary<string, float>();
-        private readonly Dictionary<string, int> m_childMemoryUsage = new Dictionary<string, int>();
+        private readonly Dictionary<string, long> m_childMemoryUsage = new Dictionary<string, long>();
 
         public LogSample()
         {
@@ -64,7 +64,7 @@ namespace PerfLogger
 
         public float ProcessCpuUsage { get; set; }
 
-        public int ProcessMemoryUsage { get; set; }
+        public long ProcessMemoryUsage { get; set; }
 
         public int MessagesPerSecond { get; set; }
 
@@ -75,7 +75,7 @@ namespace PerfLogger
             get
             {
                 int maxCpuUsage = (int)CpuUsage;
-                int maxMemUsage = ProcessMemoryUsage;
+                long maxMemUsage = ProcessMemoryUsage;
 
                 if (PerfLoggerSettings.Default.EnableChildServicesUsage)
                 {
@@ -119,7 +119,7 @@ namespace PerfLogger
             }
         }
 
-        public void SetChildMemoryUsage(Dictionary<string, int> values)
+        public void SetChildMemoryUsage(Dictionary<string, long> values)
         {
             foreach (var childMem in values)
             {
