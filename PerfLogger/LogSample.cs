@@ -77,7 +77,9 @@ namespace PerfLogger
                 int maxCpuUsage = (int)CpuUsage;
                 long maxMemUsage = ProcessMemoryUsage;
 
-                if (PerfLoggerSettings.Default.EnableChildServicesUsage)
+                if (PerfLoggerSettings.Default.EnableChildServicesUsage && 
+                    m_childCpuUsage.Count > 0 && 
+                    m_childMemoryUsage.Count > 0)
                 {
                     maxCpuUsage = Math.Max(maxCpuUsage, (int)m_childCpuUsage.Max(c => c.Value));
                     maxMemUsage = Math.Max(maxMemUsage, m_childMemoryUsage.Max(c => c.Value));                    
@@ -90,11 +92,11 @@ namespace PerfLogger
             }
         }
 
-        public static void SetHeader(List<string> childProceList)
+        public static void SetHeader(List<string> childProcessesList)
         {
             bool updated = false;
 
-            foreach (string process in childProceList)
+            foreach (string process in childProcessesList)
             {
                 if (!s_childProceList.Contains(process))
                 {
@@ -104,7 +106,7 @@ namespace PerfLogger
                 }
             }
 
-            if (updated)
+            if (updated || childProcessesList.Count == 0)
             {
                 // Update header only when process list changed
                 s_csvLog.Debug(LogHeader);
