@@ -41,8 +41,9 @@ namespace PerfLogger
 
                 if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
                 {
-                    columns.Add("Msgs/Sec");
-                    columns.Add("MsgsQueued");
+                    columns.Add("MsgRcv/sec");
+                    columns.Add("MsgSnt/sec");
+                    columns.Add("MsgQueued");
                 }
 
                 if (PerfLoggerSettings.Default.EnableChildServicesUsage)
@@ -66,7 +67,9 @@ namespace PerfLogger
 
         public long ProcessMemoryUsage { get; set; }
 
-        public int MessagesPerSecond { get; set; }
+        public int MessagesReceivedPerSecond { get; set; }
+
+        public int MessagesSentPerSecond { get; set; }
 
         public int MessagesQueued { get; set; }
 
@@ -153,7 +156,8 @@ namespace PerfLogger
 
             if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
             {
-                columns.Add(string.Format("{0,5}", MessagesPerSecond));
+                columns.Add(string.Format("{0,5}", MessagesReceivedPerSecond));
+                columns.Add(string.Format("{0,5}", MessagesSentPerSecond));
                 columns.Add(string.Format("{0,2}", MessagesQueued));
             }
 

@@ -136,6 +136,9 @@ namespace PerfLogger
 
                     m_resourceManagerCounters.Add(GetCounter(categoryName, "messages / sec"));                    
                     m_resourceManagerCounters.Add(GetCounter(categoryName, "queued messages"));
+
+                    categoryName = "ResourceManagerSent";
+                    m_resourceManagerCounters.Add(GetCounter(categoryName, "sent messages / sec"));
                 }
             }
             catch (Exception ex)
@@ -207,7 +210,8 @@ namespace PerfLogger
 
             if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
             {
-                logSample.MessagesPerSecond = GetMessagesPerSecond();
+                logSample.MessagesReceivedPerSecond = GetMessagesReceivedPerSecond();
+                logSample.MessagesSentPerSecond = GetMessagesSentPerSecond();
                 logSample.MessagesQueued = GetMessagesQueued();
             }
 
@@ -384,7 +388,7 @@ namespace PerfLogger
             return m_memCounter != null ? m_memCounter.NextValue() : -1f; 
         }
 
-        private int GetMessagesPerSecond()
+        private int GetMessagesReceivedPerSecond()
         {
             return m_resourceManagerCounters[0] != null ? (int)m_resourceManagerCounters[0].NextValue() : -1;
         }
@@ -392,6 +396,11 @@ namespace PerfLogger
         private int GetMessagesQueued()
         {
             return m_resourceManagerCounters[1] != null ? (int)m_resourceManagerCounters[1].NextValue() : -1;
+        }
+
+        private int GetMessagesSentPerSecond()
+        {
+            return m_resourceManagerCounters[2] != null ? (int)m_resourceManagerCounters[2].NextValue() : -1;
         }
 
         private void Log(string message)
