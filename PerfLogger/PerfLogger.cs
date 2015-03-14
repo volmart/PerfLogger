@@ -22,7 +22,7 @@ namespace PerfLogger
         private List<Process> m_childProcesses = new List<Process>();
         private List<PerformanceCounter> m_childCpuCounters = new List<PerformanceCounter>();
         private List<PerformanceCounter> m_childMemCounters = new List<PerformanceCounter>();
-        private List<PerformanceCounter> m_resourceManagerCounters = new List<PerformanceCounter>();
+        private Dictionary<string, PerformanceCounter> m_wmiCounters = new Dictionary<string, PerformanceCounter>();
 
         #endregion
 
@@ -130,15 +130,23 @@ namespace PerfLogger
         {
             try
             {
-                if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+                if (!PerfLoggerSettings.Default.EnableWmiCounters)
                 {
-                    string categoryName = "ResourceManager";
+                    return;                   
+                }
 
-                    m_resourceManagerCounters.Add(GetCounter(categoryName, "messages / sec"));                    
-                    m_resourceManagerCounters.Add(GetCounter(categoryName, "queued messages"));
+                var counters = PerfLoggerSettings.Default.WmiCounters;
+                foreach (string counter in counters)
+                {
+                    var categoryAndName = counter.Split('.');
+                    if (categoryAndName.Length != 2)
+                    {
+                        continue;
+                    }
 
-                    categoryName = "ResourceManagerSent";
-                    m_resourceManagerCounters.Add(GetCounter(categoryName, "sent messages / sec"));
+                    string category = categoryAndName[0];
+                    string counterName = categoryAndName[1];
+                    m_wmiCounters.Add(counter, GetCounter(category, counterName));                               
                 }
             }
             catch (Exception ex)
@@ -208,11 +216,12 @@ namespace PerfLogger
                 logSample.SetChildCpuUsage(GetChildsCpuUsage());
             }
 
-            if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+            if (PerfLoggerSettings.Default.EnableWmiCounters)
             {
-                logSample.MessagesReceivedPerSecond = GetMessagesReceivedPerSecond();
-                logSample.MessagesSentPerSecond = GetMessagesSentPerSecond();
-                logSample.MessagesQueued = GetMessagesQueued();
+                foreach (var wmiCounter in m_wmiCounters)
+                {
+                    logSample.WmiIntegerCountersValues[wmiCounter.Key] = GetNextIntegerCounterValue(wmiCounter.Value);
+                }
             }
 
             logSample.Log();
@@ -388,19 +397,9 @@ namespace PerfLogger
             return m_memCounter != null ? m_memCounter.NextValue() : -1f; 
         }
 
-        private int GetMessagesReceivedPerSecond()
+        private int GetNextIntegerCounterValue(PerformanceCounter counter)
         {
-            return m_resourceManagerCounters[0] != null ? (int)m_resourceManagerCounters[0].NextValue() : -1;
-        }
-
-        private int GetMessagesQueued()
-        {
-            return m_resourceManagerCounters[1] != null ? (int)m_resourceManagerCounters[1].NextValue() : -1;
-        }
-
-        private int GetMessagesSentPerSecond()
-        {
-            return m_resourceManagerCounters[2] != null ? (int)m_resourceManagerCounters[2].NextValue() : -1;
+            return counter != null ? (int)counter.NextValue() : -1;
         }
 
         private void Log(string message)

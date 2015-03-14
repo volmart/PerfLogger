@@ -13,6 +13,7 @@ namespace PerfLogger
 
         private readonly Dictionary<string, float> m_childCpuUsage = new Dictionary<string, float>();
         private readonly Dictionary<string, long> m_childMemoryUsage = new Dictionary<string, long>();
+        private readonly Dictionary<string, int> m_wmiIntegerCountersValues = new Dictionary<string, int>();
 
         public LogSample()
         {
@@ -39,11 +40,9 @@ namespace PerfLogger
                 columns.Add("ProcCPU%");
                 columns.Add("ProcMemMB");
 
-                if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+                if (PerfLoggerSettings.Default.EnableWmiCounters)
                 {
-                    columns.Add("MsgRcv/sec");
-                    columns.Add("MsgSnt/sec");
-                    columns.Add("MsgQueued");
+                    columns.AddRange(PerfLoggerSettings.Default.WmiCounters.Cast<string>());
                 }
 
                 if (PerfLoggerSettings.Default.EnableChildServicesUsage)
@@ -67,11 +66,10 @@ namespace PerfLogger
 
         public long ProcessMemoryUsage { get; set; }
 
-        public int MessagesReceivedPerSecond { get; set; }
-
-        public int MessagesSentPerSecond { get; set; }
-
-        public int MessagesQueued { get; set; }
+        public Dictionary<string, int> WmiIntegerCountersValues
+        {
+            get { return m_wmiIntegerCountersValues; }
+        }
 
         public bool IsOverThreshold
         {
@@ -154,11 +152,9 @@ namespace PerfLogger
             columns.Add(string.Format("{0,4}", (int)Math.Ceiling(ProcessCpuUsage)));
             columns.Add(string.Format("{0,6}", ProcessMemoryUsage));
 
-            if (PerfLoggerSettings.Default.EnableResourceManagerCounters)
+            if (PerfLoggerSettings.Default.EnableWmiCounters)
             {
-                columns.Add(string.Format("{0,5}", MessagesReceivedPerSecond));
-                columns.Add(string.Format("{0,5}", MessagesSentPerSecond));
-                columns.Add(string.Format("{0,2}", MessagesQueued));
+                columns.AddRange(WmiIntegerCountersValues.Values.Select(v => string.Format("{0,5}", v)));
             }
 
             if (PerfLoggerSettings.Default.EnableChildServicesUsage)

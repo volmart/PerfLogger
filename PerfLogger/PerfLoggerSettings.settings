@@ -29,8 +29,16 @@
     <Setting Name="Enabled" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="EnableResourceManagerCounters" Type="System.Boolean" Scope="User">
+    <Setting Name="EnableWmiCounters" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="WmiCounters" Type="System.Collections.Specialized.StringCollection" Scope="User">
+      <Value Profile="(Default)">&lt;?xml version="1.0" encoding="utf-16"?&gt;
+&lt;ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;string&gt;ResourceManager.messages / sec&lt;/string&gt;
+  &lt;string&gt;ResourceManager.queued messages&lt;/string&gt;
+  &lt;string&gt;ResourceManagerSent.sent messages / sec&lt;/string&gt;
+&lt;/ArrayOfString&gt;</Value>
     </Setting>
   </Settings>
 </SettingsFile>
