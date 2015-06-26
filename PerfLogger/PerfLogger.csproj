@@ -47,6 +47,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HeaderPatternLayout.cs" />
     <Compile Include="LogSample.cs" />
     <Compile Include="PerfLogger.cs">
       <ExcludeFromStyleCop>False</ExcludeFromStyleCop>
